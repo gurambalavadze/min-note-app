@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  client: 
+    container_name: client
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=api:3000
+    restart: unless-stopped
+    depends_on:
+      - api
+  api:
+    container_name: api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports:
+      - '3000:3000' # Expose the app on port 3000
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=mini_note
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/mini_note
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    command: >
+      sh -c "cd api && npx drizzle-kit generate && npx drizzle-kit migrate && npm run start:dev"
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - '6379:6379' # Expose Redis on port 6379
+    command: ['redis-server']
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    ports:
+      - '5432:5432' # Expose PostgreSQL on port 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mini_note
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
